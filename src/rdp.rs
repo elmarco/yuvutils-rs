@@ -233,6 +233,14 @@ pub fn rdp_rgba_to_yuv444(
     to_rdp_yuv::<{ YuvSourceChannels::Rgba as u8 }>(planar_image, rgba, rgba_stride)
 }
 
+pub fn rdp_bgra_to_yuv444(
+    planar_image: &mut YuvPlanarImageMut<u16>,
+    bgra: &[u8],
+    bgra_stride: u32,
+) -> Result<(), YuvError> {
+    to_rdp_yuv::<{ YuvSourceChannels::Bgra as u8 }>(planar_image, bgra, bgra_stride)
+}
+
 fn rdp_yuv_to_rgb<const ORIGIN_CHANNELS: u8>(
     planar_image: &YuvPlanarImage<u16>,
     rgba: &mut [u8],
