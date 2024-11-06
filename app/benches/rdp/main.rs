@@ -301,29 +301,58 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let binding = img.to_rgba8();
     let src_bytes = binding.as_bytes();
 
+    let mut plane =
+        YuvPlanarImageMut::alloc(dimensions.0, dimensions.1, YuvChromaSubsample::Yuv444);
     c.bench_function("Rdp", |b| {
         b.iter(|| {
-            let mut plane =
-                YuvPlanarImageMut::alloc(dimensions.0, dimensions.1, YuvChromaSubsample::Yuv444);
             rdp_rgb_to_yuv444(&mut plane, src_bytes, dimensions.0 * 4).unwrap();
         })
     });
 
+    let mut iplane =
+        YuvPlanarImageMut::alloc(dimensions.0, dimensions.1, YuvChromaSubsample::Yuv444);
     c.bench_function("IronRdp", |b| {
         b.iter(|| {
-            let mut plane =
-                YuvPlanarImageMut::alloc(dimensions.0, dimensions.1, YuvChromaSubsample::Yuv444);
             to_ycbcr(
                 src_bytes,
                 dimensions.0 as usize,
                 dimensions.1 as usize,
                 dimensions.0 as usize * 4,
-                plane.y_plane.borrow_mut(),
-                plane.u_plane.borrow_mut(),
-                plane.v_plane.borrow_mut(),
+                iplane.y_plane.borrow_mut(),
+                iplane.u_plane.borrow_mut(),
+                iplane.v_plane.borrow_mut(),
             );
         })
     });
+
+    let imgbuf = image::ImageBuffer::from_fn(dimensions.0, dimensions.1, |x, y| {
+        let p = (y * dimensions.0 + x) as usize;
+        let p = plane.y_plane.borrow()[p] as i16;
+        let p = ((p + 4096) as u16 >> 5) as u8;
+        image::Luma([p])
+    });
+    imgbuf.save("plane.png").unwrap();
+
+    let imgbuf = image::ImageBuffer::from_fn(dimensions.0, dimensions.1, |x, y| {
+        let p = (y * dimensions.0 + x) as usize;
+        let p = iplane.y_plane.borrow()[p] as i16;
+        let p = ((p + 4096) as u16 >> 5) as u8;
+        image::Luma([p])
+    });
+    imgbuf.save("iplane.png").unwrap();
+
+    assert_eq!(
+        bytemuck::cast_slice::<u16, i16>(plane.y_plane.borrow())[..100],
+        iplane.y_plane.borrow()[..100]
+    );
+    assert_eq!(
+        bytemuck::cast_slice::<u16, i16>(plane.u_plane.borrow()),
+        iplane.u_plane.borrow()
+    );
+    assert_eq!(
+        bytemuck::cast_slice::<u16, i16>(plane.v_plane.borrow()),
+        iplane.v_plane.borrow()
+    );
 }
 
 criterion_group!(benches, criterion_benchmark);

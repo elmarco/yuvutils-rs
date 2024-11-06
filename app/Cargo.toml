@@ -9,6 +9,7 @@ image = "0.25.5"
 
 [dev-dependencies]
 criterion = "0.5.1"
+bytemuck = { version = "1.19.0" }
 
 [[bench]]
 name = "rdp"
